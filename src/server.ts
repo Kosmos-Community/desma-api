@@ -3,19 +3,18 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import { connectDB } from './config/db';
 import { errorHandler, notFound } from './middleware/errorMiddleware';
+import { userRoutes } from './routes/userRoutes';
 
 dotenv.config();
 connectDB();
 
 const app: Application = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8000;
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/', (req: Request, res: Response) => {
-  res.send('Hello world!');
-});
+app.use('/api/users', userRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
