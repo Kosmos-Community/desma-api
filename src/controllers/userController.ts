@@ -20,9 +20,9 @@ export const authUser = async (req: Request, res: Response) => {
 };
 
 export const registerUser = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { name, email, password } = req.body;
 
-  if (!email || !password)
+  if (!name || !email || !password)
     res.status(400).json({ message: 'Invalid user data' });
 
   const userExists = await User.findOne({ email });
@@ -32,7 +32,7 @@ export const registerUser = async (req: Request, res: Response) => {
     throw new Error('User already exists');
   }
 
-  const user = await User.create({ email, password });
+  const user = await User.create({ name, email, password });
 
   if (user) {
     res.status(201).json({
