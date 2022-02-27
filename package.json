@@ -22,7 +22,8 @@
   },
   "scripts": {
     "serve": "nodemon",
-    "start": "tsc && node dist/server.js",
+    "build": "npm install && tsc",
+    "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

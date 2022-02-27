@@ -3,7 +3,17 @@ import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      unique: true,
+      match: [
+        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        'Invalid email syntax',
+      ],
+    },
     password: { type: String, required: true },
   },
   {
