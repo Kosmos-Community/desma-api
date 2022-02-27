@@ -87,7 +87,7 @@ export const updateFonts = async (
     if (error instanceof mongoose.Error.CastError) {
       return res
         .status(400)
-        .json({ message: 'Invalid fonts id syntax or fonts not found' });
+        .json({ message: 'Invalid fonts id or fields syntax' });
     }
     if (error instanceof mongoose.Error.ValidationError) {
       return res.status(400).json({ message: error.message });
