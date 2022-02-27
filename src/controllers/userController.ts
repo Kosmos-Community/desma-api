@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { User } from '../models/userModel';
 import { generateToken } from '../utils/generateToken';
 
@@ -32,12 +33,6 @@ export const registerUser = async (
 ) => {
   const { name, email, password } = req.body;
 
-  if (!name || !email || !password) {
-    return res
-      .status(400)
-      .json({ message: 'Some user data fields are missing' });
-  }
-
   const userExists = await User.findOne({ email });
 
   if (userExists) {
@@ -56,7 +51,9 @@ export const registerUser = async (
       token: generateToken(user._id),
     });
   } catch (error) {
-    res.status(400);
+    if (error instanceof mongoose.Error.ValidationError) {
+      return res.status(400).json({ message: error.message });
+    }
     next(error);
   }
 };

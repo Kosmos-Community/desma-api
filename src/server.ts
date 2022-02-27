@@ -4,6 +4,7 @@ import cors from 'cors';
 import { connectDB } from './config/db';
 import { errorHandler, notFound } from './middleware/errorMiddleware';
 import { userRoutes } from './routes/userRoutes';
+import { fontsRoutes } from './routes/fontsRoutes';
 
 dotenv.config();
 connectDB();
@@ -15,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/users', userRoutes);
+app.use('/api/fonts', fontsRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
