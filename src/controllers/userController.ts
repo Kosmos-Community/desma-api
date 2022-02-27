@@ -56,6 +56,7 @@ export const registerUser = async (
       token: generateToken(user._id),
     });
   } catch (error) {
+    res.status(400);
     next(error);
   }
 };
