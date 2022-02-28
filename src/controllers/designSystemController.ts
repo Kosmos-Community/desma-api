@@ -60,7 +60,7 @@ export const getDesignSystemById = async (
     const { id } = req.params;
     const designSystem = await DesignSystem.findById(id);
     if (!designSystem) {
-      return res.status(200).json({ message: 'No design system found' });
+      return res.status(404).json({ message: 'No design system found' });
     }
     res.status(200).json({ data: designSystem });
   } catch (error) {
