@@ -6,6 +6,8 @@ import { errorHandler, notFound } from './middleware/errorMiddleware';
 import { userRoutes } from './routes/userRoutes';
 import { paletteRoutes } from './routes/paletteRoutes';
 import { colorRoutes } from './routes/colorRoutes';
+import { fontsRoutes } from './routes/fontsRoutes';
+import { spacingsRoutes } from './routes/spacingsRoutes';
 
 dotenv.config();
 connectDB();
@@ -19,6 +21,8 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/color', colorRoutes);
 app.use('/api/palette', paletteRoutes);
+app.use('/api/fonts', fontsRoutes);
+app.use('/api/spacings', spacingsRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
