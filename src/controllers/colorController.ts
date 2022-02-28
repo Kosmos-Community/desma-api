@@ -1,22 +1,23 @@
 import { Request, Response } from 'express';
-import { Color } from '../models/colorModel';
+import { insertManyColors, deleteManyColors } from '../utils/colorFunctions';
 
-export const createMassiveColor = async (req: Request, res: Response) => {
+
+export const createColors = async (req: Request, res: Response) => {
   const data = req.body;
-  const colors = await Color.insertMany(data)
+  const colors = await insertManyColors(data)
     .catch((err) => {
-        throw new Error(err)
+      throw new Error(err.message)
     })
   res.status(200).json(colors)
 }
 
-export const updateColor = async (req: Request, res: Response) => {
-    const { id: colorId } = req.params;
-    const color = await Color.findOneAndUpdate({ _id: colorId }, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!color) 
-        throw new Error(`No color with id : ${colorId}`);
-    res.status(200).json({ color });
-  };
+export const deleteColors = async (req: Request, res: Response) => {
+  const { ids } = req.body
+  const deletedColors = await deleteManyColors(ids)
+    .catch((err) => {
+      throw new Error(err.message)
+    })
+  res.status(200).json(deletedColors)
+}
+
+

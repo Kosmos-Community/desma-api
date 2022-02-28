@@ -2,6 +2,7 @@ import { request, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { Color } from '../models/colorModel';
 import { Palette } from '../models/paletteModel';
+import { deleteManyColors, insertManyColors, bulkUpdateColors } from '../utils/colorFunctions';
 
 
 export const createPalette = async (req: Request, res: Response) => {
@@ -16,17 +17,17 @@ export const createPalette = async (req: Request, res: Response) => {
         }
     }
     try {
-        const colorData = await Color.insertMany(individualColors) // insert at Color collection
-        const colorsSet: Record<string, any> = {} // create ids array per field
+        const colorsInserted = await insertManyColors(individualColors) // insert at Color collection
+        const paletteInsert: Record<string, any> = {} // create ids array per field
         let type: string = ""
-        for (let color in colorData) {
-            type = colorData[color].type
-            colorsSet[type] ? 
-                colorsSet[type].push(colorData[color]._id) : colorsSet[type] = [colorData[color]._id]
+        for (let color in colorsInserted) {
+            type = colorsInserted[color].type
+            paletteInsert[type] ? 
+                paletteInsert[type].push(colorsInserted[color]._id) : paletteInsert[type] = [colorsInserted[color]._id]
         }
-        const paletteData = await Palette.create(colorsSet) // insert at Color collection
+        const paletteData = await Palette.create(paletteInsert) // insert at Color collection
         res.status(201).json(paletteData)
-    } catch(err: any){
+    } catch(err: any) {
         throw new Error(err.message)
     }
 };
@@ -50,25 +51,36 @@ export const getPalette = async (req: Request, res: Response) => {
 };
 
 export const updatePalette = async (req: Request, res: Response) => {
+    const { id: paletteId } = req.params
     const request = req.body
     delete request._id
-    const updateOpts = []
-    for (let field in request){ // prepare data for insert colors in color collection
+    const colorOpts = []
+    let colorId: string | object = ""
+    const paletteUpdate: Record<string, any> = {}
+    for (let field in request){ // Prepare data to insert colors
         for (let color in request[field]){
-            updateOpts.push({
+            colorId = request[field][color]._id || new mongoose.Types.ObjectId() 
+            colorOpts.push({
                 updateOne : {
-                    "filter" : {_id: request[field][color]._id},
-                    "update" : {
-                        $set : { hexCode: request[field][color].hexCode }
-                    }
-            }})
+                    filter : {_id: colorId}, 
+                    update : {
+                        $set : { 
+                            type: field,
+                            hexCode: request[field][color].hexCode
+                        }
+                    }, upsert: true
+                }
+            })
+            paletteUpdate[field] ? paletteUpdate[field].push(colorId) : paletteUpdate[field] = [colorId]
         }
+    }    
+    try {
+        await bulkUpdateColors(colorOpts) // Update and upsert colors
+        const palette = await Palette.updateOne({_id: paletteId}, paletteUpdate) // Update palette
+        res.status(200).json(palette)
+    } catch(err: any){
+        throw new Error(err.message)
     }
-    const colors = await Color.bulkWrite(updateOpts)
-        .catch((err) => {
-            throw new Error(err.message)
-        })
-    res.status(200).json(colors)
 }
 
 export const deletePalette = async (req: Request, res: Response) => {
@@ -111,7 +123,7 @@ export const deletePalette = async (req: Request, res: Response) => {
                 ids.push(...paletteData[field])
             response = `Palette with id : ${paletteId} successfully removed`
         }
-        await Color.deleteMany( {_id: {$in: ids}} ) // delete of color 
+        await deleteManyColors(ids) // delete of color 
         res.status(200).json({ msg: response });
     } catch(err: any){
         res.status(400).json(err.message)
