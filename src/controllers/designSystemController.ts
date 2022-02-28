@@ -12,7 +12,7 @@ export const getUserDesignSystems = async (
     const designSystems = await DesignSystem.find({ userId: userId });
 
     if (designSystems.length < 1) {
-      return res.status(404).json({ message: 'No design systems found' });
+      return res.status(200).json({ message: 'No design systems found' });
     }
 
     res.status(200).json({ data: designSystems });
@@ -42,7 +42,7 @@ export const getDesignSystems = async (
     );
 
     if (designSystems.length < 1) {
-      return res.status(404).json({ message: 'No design systems found' });
+      return res.status(200).json({ message: 'No design systems found' });
     }
 
     res.status(200).json({ data: designSystems });
@@ -123,7 +123,7 @@ export const updateDesignSystem = async (
       { new: true }
     );
     if (!updatedDesignSystem) {
-      return res.status(404).json({ message: 'Design system not found' });
+      return res.status(200).json({ message: 'Design system not found' });
     }
     res.status(200).json({
       message: 'Design system updated successfully',
@@ -151,7 +151,7 @@ export const deleteDesignSystem = async (
     const { id } = req.params;
     const deletedDesignSystem = await DesignSystem.deleteOne({ _id: id });
     if (deletedDesignSystem.deletedCount < 1) {
-      return res.status(404).json({ message: 'Design system not found' });
+      return res.status(200).json({ message: 'Design system not found' });
     }
     res.status(200).json({
       message: 'Design system deleted successfully',
