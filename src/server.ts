@@ -8,6 +8,7 @@ import { paletteRoutes } from './routes/paletteRoutes';
 import { colorRoutes } from './routes/colorRoutes';
 import { fontsRoutes } from './routes/fontsRoutes';
 import { spacingsRoutes } from './routes/spacingsRoutes';
+import { designSystemRoutes } from './routes/designSystemRoutes';
 
 dotenv.config();
 connectDB();
@@ -23,6 +24,7 @@ app.use('/api/color', colorRoutes);
 app.use('/api/palette', paletteRoutes);
 app.use('/api/fonts', fontsRoutes);
 app.use('/api/spacings', spacingsRoutes);
+app.use('/api/designSystem', designSystemRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
