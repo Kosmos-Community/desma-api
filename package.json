@@ -10,6 +10,7 @@
     "express": "^4.17.2",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.2.1",
+    "mongoose-referrence-validator": "^1.0.0",
     "nodemon": "^2.0.15",
     "ts-node": "^10.5.0"
   },
