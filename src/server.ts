@@ -4,6 +4,8 @@ import cors from 'cors';
 import { connectDB } from './config/db';
 import { errorHandler, notFound } from './middleware/errorMiddleware';
 import { userRoutes } from './routes/userRoutes';
+import { paletteRoutes } from './routes/paletteRoutes';
+import { colorRoutes } from './routes/colorRoutes';
 import { fontsRoutes } from './routes/fontsRoutes';
 import { spacingsRoutes } from './routes/spacingsRoutes';
 
@@ -17,6 +19,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/users', userRoutes);
+app.use('/api/color', colorRoutes);
+app.use('/api/palette', paletteRoutes);
 app.use('/api/fonts', fontsRoutes);
 app.use('/api/spacings', spacingsRoutes);
 
