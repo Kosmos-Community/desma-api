@@ -1,12 +1,12 @@
-import { Request, Response, NextFunction } from "express";
-import mongoose, { mongo } from "mongoose";
-import { Palette } from "../models/paletteModel";
-import _ from "lodash";
+import { Request, Response, NextFunction } from 'express';
+import mongoose, { mongo } from 'mongoose';
+import { Palette } from '../models/paletteModel';
+import _ from 'lodash';
 import {
   deleteManyColors,
   insertManyColors,
   bulkUpdateColors,
-} from "../utils/colorFunctions";
+} from '../utils/colorFunctions';
 
 export const createPalette = async (
   req: Request,
@@ -30,7 +30,7 @@ export const createPalette = async (
     const colorsInserted = await insertManyColors(individualColors); // insert at Color collection
 
     const paletteInsert: Record<string, any> = {}; // create ids array per field
-    let type: string = "";
+    let type: string = '';
     for (let color in colorsInserted) {
       type = colorsInserted[color].type;
       paletteInsert[type]
@@ -40,12 +40,10 @@ export const createPalette = async (
 
     const paletteData = await Palette.create(paletteInsert); // insert at Color collection
 
-    res
-      .status(201)
-      .json(paletteData);
+    res.status(201).json(paletteData);
   } catch (error) {
     if (error instanceof mongoose.Error.CastError) {
-      return res.status(400).json({ message: "Invalid fields syntax" });
+      return res.status(400).json({ message: 'Invalid fields syntax' });
     }
     if (error instanceof mongoose.Error.ValidationError) {
       return res.status(400).json({ message: error.message });
@@ -66,20 +64,18 @@ export const getPalette = async (
       { createdAt: false, updatedAt: false, __v: false }
     )
       .populate([
-        { path: "primaryColor", select: "_id hexCode" },
-        { path: "secondaryColor", select: "_id hexCode" },
-        { path: "textColor", select: "_id hexCode" },
-        { path: "backgroundColors", select: "_id hexCode" },
-        { path: "extraColors", select: "_id hexCode" },
+        { path: 'primaryColor', select: '_id hexCode' },
+        { path: 'secondaryColor', select: '_id hexCode' },
+        { path: 'textColor', select: '_id hexCode' },
+        { path: 'backgroundColors', select: '_id hexCode' },
+        { path: 'extraColors', select: '_id hexCode' },
       ])
       .then((palette) => {
-        res
-          .status(200)
-          .json({ ...palette._doc });
+        res.status(200).json({ ...palette._doc });
       });
   } catch (error) {
     if (error instanceof mongoose.Error.CastError) {
-      return res.status(400).json({ message: "Invalid fields syntax" });
+      return res.status(400).json({ message: 'Invalid fields syntax' });
     }
     if (error instanceof mongoose.Error.ValidationError) {
       return res.status(400).json({ message: error.message });
@@ -102,9 +98,9 @@ export const updatePalette = async (
 
     delete request._id;
     const palette = await Palette.findOne(
-      {_id: paletteId},
-      {_id: false, createdAt: false, updatedAt: false, __v: false}
-    )
+      { _id: paletteId },
+      { _id: false, createdAt: false, updatedAt: false, __v: false }
+    );
 
     if (!palette)
       return res
@@ -130,47 +126,37 @@ export const updatePalette = async (
         });
         colorOpts.push({
           updateOne: {
-            filter: {_id: paletteId},
+            filter: { _id: paletteId },
             update: {
-              $pullAll: {}
-            }
-          }
-        })
+              $pullAll: {},
+            },
+          },
+        });
         // Data to update palette
         paletteUpdate[field]
           ? paletteUpdate[field].push(colorId)
           : (paletteUpdate[field] = [colorId]);
       }
     }
-    
-    // Detect deleted colors
-    const deletedIds = []
-    const paletteTemp = []
-    const paletteTemp2 = []
-    for (let field in palette._doc) {
-      paletteTemp.push(...palette._doc[field].map((color: any) => color.toString()))
-      paletteTemp2.push(...paletteUpdate[field].map((color: any) => color))
-    }
-    for (let field in paletteTemp) {
-      if (paletteUpdate[field])
-        deletedIds.push(..._.difference(paletteTemp[field], paletteUpdate[field]))
-    }
-    console.log(paletteTemp);
-    console.log(paletteTemp2);
-    console.log(palette._doc)
-    console.log(paletteUpdate);
-    console.log(deletedIds);
-    
+
+    Object.keys(palette._doc).map((field) => {
+      !paletteUpdate[field] && (paletteUpdate[field] = []);
+      palette._doc[field] = palette._doc[field].map((color: any) =>
+        color.toString()
+      );
+    });
+
     await bulkUpdateColors(colorOpts); // Update and upsert colors
 
-    const updatedPalette = await Palette.updateOne({ _id: paletteId }, paletteUpdate); // Update palette
+    const updatedPalette = await Palette.updateOne(
+      { _id: paletteId },
+      paletteUpdate
+    ); // Update palette
 
-    res
-      .status(200)
-      .json(updatedPalette);
+    res.status(200).json(updatedPalette);
   } catch (error) {
     if (error instanceof mongoose.Error.CastError) {
-      return res.status(400).json({ message: "Invalid fields syntax" });
+      return res.status(400).json({ message: 'Invalid fields syntax' });
     }
     if (error instanceof mongoose.Error.ValidationError) {
       return res.status(400).json({ message: error.message });
@@ -216,12 +202,10 @@ export const deletePalette = async (
     response = `Palette with id : ${paletteId} successfully removed`;
     await deleteManyColors(ids); // delete of color
 
-    res
-      .status(200)
-      .json({ msg: response });
+    res.status(200).json({ msg: response });
   } catch (error) {
     if (error instanceof mongoose.Error.CastError) {
-      return res.status(400).json({ message: "Invalid fields syntax" });
+      return res.status(400).json({ message: 'Invalid fields syntax' });
     }
     if (error instanceof mongoose.Error.ValidationError) {
       return res.status(400).json({ message: error.message });
@@ -230,13 +214,11 @@ export const deletePalette = async (
   }
 };
 
-
-
 function missing(array1: any[], array2: any[]) {
-  const copy = array1.slice()
-  return array2.some(element => {
-    const index = copy.indexOf(element)
-    if(index >= 0) copy.splice(index, 1);
-    return index < 0
-  })
+  const copy = array1.slice();
+  return array2.some((element) => {
+    const index = copy.indexOf(element);
+    if (index >= 0) copy.splice(index, 1);
+    return index < 0;
+  });
 }
