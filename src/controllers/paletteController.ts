@@ -22,7 +22,7 @@ export const createPalette = async (
       for (let color in request[field]) {
         individualColors.push({
           type: field,
-          hexCode: request[field][color],
+          hexCode: request[field][color].hexCode,
         });
       }
     }
