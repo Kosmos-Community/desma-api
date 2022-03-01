@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import mongoose from 'mongoose';
-import { Color } from '../models/colorModel';
+import mongoose, { mongo } from 'mongoose';
 import { Palette } from '../models/paletteModel';
+import _ from 'lodash';
 import {
   deleteManyColors,
   insertManyColors,
@@ -17,8 +17,8 @@ export const createPalette = async (
     const request = req.body;
     const individualColors = [];
 
+    // prepare data for insert colors in color collection
     for (let field in request) {
-      // prepare data for insert colors in color collection
       for (let color in request[field]) {
         individualColors.push({
           type: field,
@@ -97,10 +97,20 @@ export const updatePalette = async (
     let colorId: string | object;
 
     delete request._id;
+    const palette = await Palette.findOne(
+      { _id: paletteId },
+      { _id: false, createdAt: false, updatedAt: false, __v: false }
+    );
 
+    if (!palette)
+      return res
+        .status(404)
+        .json({ message: `No palette with id : ${paletteId}` });
+
+    // Prepare data to insert colors
     for (let field in request) {
-      // Prepare data to insert colors
       for (let color in request[field]) {
+        // Data to update color
         colorId = request[field][color]._id || new mongoose.Types.ObjectId();
         colorOpts.push({
           updateOne: {
@@ -114,17 +124,36 @@ export const updatePalette = async (
             upsert: true,
           },
         });
+        colorOpts.push({
+          updateOne: {
+            filter: { _id: paletteId },
+            update: {
+              $pullAll: {},
+            },
+          },
+        });
+        // Data to update palette
         paletteUpdate[field]
           ? paletteUpdate[field].push(colorId)
           : (paletteUpdate[field] = [colorId]);
       }
     }
 
+    Object.keys(palette._doc).map((field) => {
+      !paletteUpdate[field] && (paletteUpdate[field] = []);
+      palette._doc[field] = palette._doc[field].map((color: any) =>
+        color.toString()
+      );
+    });
+
     await bulkUpdateColors(colorOpts); // Update and upsert colors
 
-    const palette = await Palette.updateOne({ _id: paletteId }, paletteUpdate); // Update palette
+    const updatedPalette = await Palette.updateOne(
+      { _id: paletteId },
+      paletteUpdate
+    ); // Update palette
 
-    res.status(200).json(palette);
+    res.status(200).json(updatedPalette);
   } catch (error) {
     if (error instanceof mongoose.Error.CastError) {
       return res.status(400).json({ message: 'Invalid fields syntax' });
@@ -166,40 +195,11 @@ export const deletePalette = async (
     const paletteData = palette._doc;
     const ids = [];
 
-    if (Object.keys(request).length != 0) {
-      // delete color from array
-      let index: number;
+    // delete complete palette
+    await palette.remove();
 
-      delete paletteData._id;
-      ids.push(
-        ...request.colors_ids.map(
-          (id: string) => new mongoose.Types.ObjectId(id)
-        )
-      );
-      for (let field in paletteData) {
-        ids.forEach((id: any) => {
-          if (paletteData[field].includes(id)) {
-            index = paletteData[field].indexOf(id);
-            paletteData[field].splice(index, 1); // remove id or ids color from palette array
-          }
-        });
-      }
-      const updatedPalette = await Palette.updateOne(
-        // update of palette array
-        { _id: paletteId },
-        { $set: palette },
-        { new: true, runValidators: true }
-      );
-      response = updatedPalette;
-    } else {
-      // delete complete palette
-      await palette.remove();
-
-      for (let field in paletteData) ids.push(...paletteData[field]);
-
-      response = `Palette with id : ${paletteId} successfully removed`;
-    }
-
+    for (let field in paletteData) ids.push(...paletteData[field]);
+    response = `Palette with id : ${paletteId} successfully removed`;
     await deleteManyColors(ids); // delete of color
 
     res.status(200).json({ msg: response });
@@ -213,3 +213,12 @@ export const deletePalette = async (
     next(error);
   }
 };
+
+function missing(array1: any[], array2: any[]) {
+  const copy = array1.slice();
+  return array2.some((element) => {
+    const index = copy.indexOf(element);
+    if (index >= 0) copy.splice(index, 1);
+    return index < 0;
+  });
+}
