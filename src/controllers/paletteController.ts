@@ -5,7 +5,6 @@ import _ from 'lodash';
 import {
   deleteManyColors,
   insertManyColors,
-  bulkUpdateColors,
 } from '../utils/colorFunctions';
 
 export const createPalette = async (
@@ -17,28 +16,28 @@ export const createPalette = async (
     const request = req.body;
     const individualColors = [];
 
-    // prepare data for insert colors in color collection
-    for (let field in request) {
-      for (let color in request[field]) {
+    for (const type in request) {
+      for (const color of request[type]) {
         individualColors.push({
-          type: field,
-          hexCode: request[field][color].hexCode,
+          type: type,
+          hexCode: color.hexCode,
         });
       }
     }
 
-    const colorsInserted = await insertManyColors(individualColors); // insert at Color collection
+    const colorsInserted: any = await insertManyColors(individualColors);
 
-    const paletteInsert: Record<string, any> = {}; // create ids array per field
-    let type: string = '';
-    for (let color in colorsInserted) {
-      type = colorsInserted[color].type;
-      paletteInsert[type]
-        ? paletteInsert[type].push(colorsInserted[color]._id)
-        : (paletteInsert[type] = [colorsInserted[color]._id]);
+    const paletteInsert: Record<string, any> = {};
+    for (const color of colorsInserted) {
+      const type = color.type;
+      if (paletteInsert[type]) {
+        paletteInsert[type].push(color._id);
+      } else {
+        paletteInsert[type] = [color._id];
+      }
     }
 
-    const paletteData = await Palette.create(paletteInsert); // insert at Color collection
+    const paletteData = await Palette.create(paletteInsert);
 
     res.status(201).json(paletteData);
   } catch (error) {
@@ -75,7 +74,7 @@ export const getPalette = async (
       });
   } catch (error) {
     if (error instanceof mongoose.Error.CastError) {
-      return res.status(400).json({ message: 'Invalid fields syntax' });
+      return res.status(400).json({ message: 'Invalid palette id syntax' });
     }
     if (error instanceof mongoose.Error.ValidationError) {
       return res.status(400).json({ message: error.message });
@@ -92,11 +91,7 @@ export const updatePalette = async (
   try {
     const { id: paletteId } = req.params;
     const request = req.body;
-    const colorOpts = [];
-    const paletteUpdate: Record<string, any> = {};
-    let colorId: string | object;
 
-    delete request._id;
     const palette = await Palette.findOne(
       { _id: paletteId },
       { _id: false, createdAt: false, updatedAt: false, __v: false }
@@ -105,75 +100,53 @@ export const updatePalette = async (
     if (!palette)
       return res
         .status(404)
-        .json({ message: `No palette with id : ${paletteId}` });
+        .json({ message: `No palette with id: ${paletteId}` });
 
-    // Prepare data to insert colors
-    for (let field in request) {
-      for (let color in request[field]) {
-        // Data to update color
-        colorId = request[field][color]._id || new mongoose.Types.ObjectId();
-        colorOpts.push({
-          updateOne: {
-            filter: { _id: colorId },
-            update: {
-              $set: {
-                type: field,
-                hexCode: request[field][color].hexCode,
-              },
-            },
-            upsert: true,
-          },
-        });
-        colorOpts.push({
-          updateOne: {
-            filter: { _id: paletteId },
-            update: {
-              $pullAll: {},
-            },
-          },
-        });
-        // Data to update palette
-        paletteUpdate[field]
-          ? paletteUpdate[field].push(colorId)
-          : (paletteUpdate[field] = [colorId]);
-      }
-    }
+    const colors: any = Object.values(request).reduce((acc: any, val: any) => acc.concat(val), []);
 
-    Object.keys(palette._doc).map((field) => {
-      !paletteUpdate[field] && (paletteUpdate[field] = []);
-      palette._doc[field] = palette._doc[field].map((color: any) =>
-        color.toString()
-      );
+    const colorOpts = colors.map((color: any) => ({
+      updateOne: {
+        filter: { _id: color._id || new mongoose.Types.ObjectId() },
+        update: { $set: { type: color.type, hexCode: color.hexCode } },
+        upsert: true,
+      },
+    }));
+
+    const paletteUpdate: any = {};
+    colors.forEach((color: any) => {
+      const field = color.type;
+      const colorId = color._id || new mongoose.Types.ObjectId();
+
+      paletteUpdate[field] = paletteUpdate[field] || [];
+      paletteUpdate[field].push(colorId);
     });
 
-    await bulkUpdateColors(colorOpts); // Update and upsert colors
+    const [updatedColors, updatedPalette] = await Promise.all([Palette.bulkWrite(colorOpts), Palette.updateOne({ _id: paletteId }, paletteUpdate)]);
 
-    const updatedPalette = await Palette.updateOne(
-      { _id: paletteId },
-      paletteUpdate
-    ); // Update palette
-
-    res.status(200).json(updatedPalette);
+    res.status(200).json({
+      acknowledged: updatedPalette.acknowledged,
+      modifiedCount: updatedPalette.modifiedCount,
+      upsertedId: updatedPalette.upsertedId
+        ? updatedPalette.upsertedId.toString()
+        : null,
+      upsertedCount: updatedPalette.upsertedCount,
+      matchedCount: updatedPalette.matchedCount,
+    });
   } catch (error) {
     if (error instanceof mongoose.Error.CastError) {
-      return res.status(400).json({ message: 'Invalid fields syntax' });
+      res.status(400).json({ message: "Invalid fields syntax" });
+    } else if (error instanceof mongoose.Error.ValidationError) {
+      res.status(400).json({ message: error.message });
+    } else {
+      next(error);
     }
-    if (error instanceof mongoose.Error.ValidationError) {
-      return res.status(400).json({ message: error.message });
-    }
-    next(error);
   }
 };
 
-export const deletePalette = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const deletePalette = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id: paletteId } = req.params;
-    const request = req.body;
-    let response: string | object;
+    let message: string | object;
 
     let palette = await Palette.findOne(
       { _id: paletteId },
@@ -190,19 +163,19 @@ export const deletePalette = async (
     if (!palette)
       return res
         .status(404)
-        .json({ message: `No palette with id : ${paletteId}` });
+        .json({ message: `No palette with id: ${paletteId}` });
 
     const paletteData = palette._doc;
-    const ids = [];
+    let ids = [];
 
-    // delete complete palette
     await palette.remove();
+    for (let field in paletteData) {
+      if (paletteData[field].length) ids.push(paletteData[field]);
+    }
+    message = `Palette with id: ${paletteId} successfully removed`;
+    await deleteManyColors(ids.flat());
 
-    for (let field in paletteData) ids.push(...paletteData[field]);
-    response = `Palette with id : ${paletteId} successfully removed`;
-    await deleteManyColors(ids); // delete of color
-
-    res.status(200).json({ msg: response });
+    res.status(200).json({ message });
   } catch (error) {
     if (error instanceof mongoose.Error.CastError) {
       return res.status(400).json({ message: 'Invalid fields syntax' });
@@ -213,12 +186,3 @@ export const deletePalette = async (
     next(error);
   }
 };
-
-function missing(array1: any[], array2: any[]) {
-  const copy = array1.slice();
-  return array2.some((element) => {
-    const index = copy.indexOf(element);
-    if (index >= 0) copy.splice(index, 1);
-    return index < 0;
-  });
-}
