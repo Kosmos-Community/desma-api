@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { passwordSchema } from '../utils/schemas/passwordSchema';
 
 export const validateRequest = (requestParams: any[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -43,3 +44,17 @@ const runValidators = (reqParam: any, paramObj: any) => {
                 return false
     return true;
 };
+
+
+export const validatePassword = (req: Request, res: Response, next: NextFunction) => {
+    const { password } = req.body;
+  
+    const { error } = passwordSchema.validate(password);
+  
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+  
+    next();
+  };
+  
